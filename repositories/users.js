@@ -111,7 +111,7 @@ class UsersRepository {
 // so instead we will export an INSTANCE of the class:
 module.exports = new UsersRepository('users.json');
 
-//pretend this is anotehr file: 
+//pretend this is another file: 
 // const repo = require('./users');
 // repo.getAll(); 
 // etc.
