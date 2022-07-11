@@ -1,50 +1,38 @@
 const fs = require('fs');
 const crypto = require('crypto');
 const util = require('util');
-// const e = require('express');
 const Repository = require('./repository');
 
 const scrypt = util.promisify(crypto.scrypt);
 
 class UsersRepository extends Repository {
-    async create(attrs) {
-        attrs.id = this.randomId();
+  async comparePasswords(saved, supplied) {
+    console.log('saved: ', saved, 'supplied: ', supplied);
+    // Saved -> password saved in our database. 'hashed.salt'
+    // Supplied -> password given to us by a user trying sign in
+    const [hashed, salt] = saved.split('.');
+    const hashedSuppliedBuf = await scrypt(supplied, salt, 64);
 
-        const salt = crypto.randomBytes(8).toString('hex');
-        const buf = await scrypt(attrs.password, salt, 64)
+    return hashed === hashedSuppliedBuf.toString('hex');
+  }
 
-        const records = await this.getAll();
-        const record = {
-            ...attrs,
-            password: `${buf.toString('hex')}.${salt}`
-        }
-        records.push(record);
-        await this.writeAll(records);
-        return record;
-    }
+  async create(attrs) {
+    attrs.id = this.randomId();
 
+    const salt = crypto.randomBytes(8).toString('hex');
+    const buf = await scrypt(attrs.password, salt, 64);
 
-    async comparePasswords(saved, supplied) {
-        // saved -> password saved in our database ex. 'hashed.salt'
-        // supplied -> password given to us by user trying to sign in
-        const [hashed, salt] = saved.split('.');
-        const hashedSuppliedBuf = await scrypt(supplied, salt, 64);
+    const records = await this.getAll();
+    const record = {
+      ...attrs,
+      password: `${buf.toString('hex')}.${salt}`
+    };
+    records.push(record);
 
-        return hashed === hashedSuppliedBuf.toString('hex');;
-    }
+    await this.writeAll(records);
+
+    return record;
+  }
 }
 
-// module.exports = UsersRepository;
-
-// pretend this is another file: 
-// const UsersRepository = require('./users');
-// const repo = new UsersRepository('users.json');
-
-// that method of exporting would get complicated 
-// so instead we will export an INSTANCE of the class:
 module.exports = new UsersRepository('users.json');
-
-//pretend this is another file: 
-// const repo = require('./users');
-// repo.getAll(); 
-// etc.
